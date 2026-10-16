@@ -76,7 +76,7 @@ Skip this and login / email-confirmation links will bounce back to `localhost`.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| **404 on refresh or direct link** (e.g. `/settings`) | SPA fallback missing | The `[[redirects]]` block in `netlify.toml` fixes it. Verify it's the last rule. |
+| **404 on refresh or direct link** (e.g. `/settings`) | SPA fallback missing | The `[[redirects]]` block in `netlify.toml` and `public/_redirects` both fix it. Confirm they are the last rules and use `200`. |
 | **Blank white page after deploy** | `base` path wrong, or stale `index.html` cached | Check build log for the Vite `base` option; caching headers in `netlify.toml` prevent the stale-shell case. |
 | **Build fails: unsupported Node / syntax error** | Netlify used a Node version older than your local one | `.nvmrc` (Node 20) + `NODE_VERSION` in `netlify.toml` are already set. |
 | **Build fails on `npm ci`** | `package-lock.json` out of sync | Commit the updated lockfile, or switch the command to `npm install`. |
@@ -86,17 +86,23 @@ Skip this and login / email-confirmation links will bounce back to `localhost`.
 
 ---
 
-## 6. Alternative to the netlify.toml redirect
+## 6. The 404-on-refresh fix ships twice on purpose
 
-If you prefer file-based config, add `public/_redirects` containing:
+Two files carry the same SPA fallback, and both are needed depending on how the
+site is deployed:
 
-```
-/*    /index.html   200
-```
+| File | Used when |
+|---|---|
+| `netlify.toml` → `[[redirects]]` | Netlify builds the site from Git (the normal setup) |
+| `public/_redirects` | You upload the build folder manually, **or** the site's build settings were overridden in the Netlify UI — in both cases `netlify.toml` is ignored, but everything in `public/` is copied into the build output, so this rule still ships |
 
-`public/` is copied verbatim into the publish folder, so the rule ships with the
-site. Do not ship both a mismatched `netlify.toml` rule and `_redirects` rule —
-keep one source of truth.
+If you update one, update the other so they stay identical. Both must end with
+`/*    /index.html   200` — that `200` matters. A `301`/`302` makes the browser
+change the URL and the router reports a wrong path instead of rendering the page.
+
+**After the redirect is in place, redeploy and test by opening a deep link
+directly** (e.g. paste `https://<site>.netlify.app/settings` into a fresh tab) —
+navigating inside the app alone will not reproduce the original 404.
 
 ---
 
@@ -104,9 +110,9 @@ keep one source of truth.
 
 - [ ] `npm run build` succeeds locally
 - [ ] `package-lock.json` committed
-- [ ] `netlify.toml` and `.nvmrc` present at repo root
+- [ ] `netlify.toml`, `public/_redirects` and `.nvmrc` present
 - [ ] `VITE_SUPABASE_URL` + `VITE_SUPABASE_ANON_KEY` set in Netlify
 - [ ] Netlify **Clear cache and deploy** run *after* env vars were added
 - [ ] Supabase Site URL + Redirect URLs updated to the Netlify domain
-- [ ] Deep link opened directly (not via in-app navigation) to confirm no 404
+- [ ] Deep link opened directly in a fresh tab to confirm no 404
 - [ ] Browser hard-refresh after deploy confirms no stale shell
