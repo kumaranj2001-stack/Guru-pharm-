@@ -1,0 +1,15 @@
+# SPA fallback — fixes "404 on refresh / direct link".
+#
+# Netlify serves this folder as static files. A route such as /settings or
+# /developer-settings has no matching file on disk, so Netlify returns its own
+# 404 page. This rule serves index.html (with a 200, not a 301) for every
+# unmatched path, letting the React router take over.
+#
+# Why this file in addition to netlify.toml: everything in public/ is copied
+# into the build output (dist/ or build/). That means the rule still works if
+# the folder is uploaded to Netlify manually, or if the site's build settings
+# were overridden in the Netlify UI — neither of which uses netlify.toml.
+#
+# Keep this rule LAST so real files win.
+
+/*    /index.html   200
